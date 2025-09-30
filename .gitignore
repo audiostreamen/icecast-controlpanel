@@ -1,0 +1,33 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.db
+
+# Logs
+*.log
+logs/
+*.bak
+*.bak-*
+*.swp
+
+# Virtual env
+.venv/
+venv/
+ENV/
+
+# Env/config secrets
+.env
+*.env
+*.env.*
+.envrc
+
+# Databases
+*.sqlite
+*.sqlite3
+
+# System files
+.DS_Store
+*.tar.gz
+*.zip

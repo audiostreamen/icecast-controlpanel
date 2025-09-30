@@ -1,0 +1,15 @@
+[Unit]
+Description=Ingest Admin (Flask/Gunicorn)
+After=network.target
+
+[Service]
+User=www-data
+Group=www-data
+WorkingDirectory=/opt/ingest-admin
+EnvironmentFile=/etc/default/ingest-admin
+ExecStart=/opt/ingest-admin/venv/bin/gunicorn -w 2 -b 127.0.0.1:5050 wsgi:app
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target
+

@@ -1,0 +1,56 @@
+*** Begin Patch
+*** Update File: /opt/ingest-admin/app.py
+@@
+-from flask import Flask, render_template_string
++from flask import Flask, render_template_string, request, Response, abort
++import os, subprocess
+@@
+ app = Flask(__name__)
+ 
+ @app.route("/")
+ def index():
+-    return render_template_string(HTML, title=APP_TITLE)
++    # Voeg knoppen toe onder de HTML
++    actions = """
++    <div style="margin:24px 0">
++      <form method="post" action="/action" style="display:grid;gap:8px;max-width:360px">
++        <input type="hidden" name="csrf" value="{csrf}">
++        <button name="do" value="icecast:reload">Reload Icecast</button>
++        <button name="do" value="icecast:restart">Restart Icecast</button>
++        <button name="do" value="liquidsoap:reload">Reload Liquidsoap</button>
++        <button name="do" value="liquidsoap:restart">Restart Liquidsoap</button>
++      </form>
++      <p style="color:#6b7280;font:12px system-ui;margin-top:8px">
++        Acties vereisen geldige CSRF-token en zijn gelogd in systemd-journal.
++      </p>
++    </div>
++    """.format(csrf=os.environ.get("ADMIN_TOKEN",""))
++    return render_template_string(HTML.replace("</h1>", "</h1>"+actions), title=APP_TITLE)
+@@
+ @app.route("/health")
+ def health():
+     return "OK", 200
++
++def run_wrapper(arg: str) -> tuple[str,int]:
++    try:
++        out = subprocess.check_output(["sudo","/usr/local/bin/ingestctl.sh", arg],
++                                      stderr=subprocess.STDOUT, text=True, timeout=15)
++        return (out.strip() or "OK", 200)
++    except subprocess.CalledProcessError as e:
++        return (f"ERR({e.returncode}): {e.output}", 500)
++    except Exception as e:
++        return (f"ERR: {e}", 500)
++
++@app.route("/action", methods=["POST"])
++def action():
++    token = os.environ.get("ADMIN_TOKEN","")
++    if not token:
++        abort(503, "ADMIN_TOKEN not configured")
++    if request.form.get("csrf") != token:
++        abort(403, "Bad CSRF")
++    do = request.form.get("do","")
++    if do not in {"icecast:reload","icecast:restart","liquidsoap:reload","liquidsoap:restart"}:
++        abort(400, "Unsupported action")
++    msg, code = run_wrapper(do)
++    return Response(msg+"\n", status=code, mimetype="text/plain")
+*** End Patch
